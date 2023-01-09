@@ -32,21 +32,24 @@ export const createConnectionSocket = (httpServer: HTTPServer) => {
       }: SocketChat) => {
         const promptStart = personalityPrompt(personality);
         const promptEnd = messagePrompt(messages);
-        const response = await sendMessage(
-          `${promptStart}\n${promptEnd}`,
-          openAiApiKey
-        );
-
-        console.log(`Chat received for user with id: ${userId}`);
-        socket
-          // .to(userId)
-          .emit(
-            "response",
-            { id, response: response.data.choices[0].text },
-            (data) => {
-              console.log("ack", data);
-            }
+        try {
+          const response = await sendMessage(
+            `${promptStart}\n${promptEnd}`,
+            openAiApiKey
           );
+
+          console.log(`Chat received for user with id: ${userId}`);
+          io.to(userId).emit("response", {
+            id,
+            response: response.data.choices[0].text,
+          });
+        } catch (e) {
+          console.error("Error communicating with OpenAI");
+          io.to(userId).emit("error", {
+            id,
+            error: "Could not communicate with OpenAI",
+          });
+        }
       }
     );
   });
